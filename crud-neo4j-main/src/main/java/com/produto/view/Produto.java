@@ -1,0 +1,215 @@
+package com.produto.view;
+
+import com.Main;
+import com.Neo4jConnection;
+import com.produto.model.ProdutoModel;
+import org.neo4j.driver.*;
+import org.neo4j.driver.Record;
+
+import java.util.List;
+import java.util.Scanner;
+import java.util.stream.Collectors;
+
+import static org.neo4j.driver.Values.parameters;
+
+public class Produto {
+
+    private Neo4jConnection neo4jConnection;
+    private Scanner scanner;
+
+    public Produto() {
+        this.neo4jConnection = new Neo4jConnection();
+        this.scanner = new Scanner(System.in);
+    }
+
+    public void exibirMenu() {
+        int opcao;
+        do {
+            System.out.println("\nSelecione uma ação:");
+            System.out.println("1. Incluir produto");
+            System.out.println("2. Editar produto");
+            System.out.println("3. Listar produtos");
+            System.out.println("4. Excluir produto");
+            System.out.println("5. Sair");
+
+            opcao = scanner.nextInt();
+            scanner.nextLine();
+
+            switch (opcao) {
+                case 1:
+                    incluirProduto();
+                    break;
+                case 2:
+                    editarProduto();
+                    break;
+                case 3:
+                    listarProdutos();
+                    break;
+                case 4:
+                    excluirProduto();
+                    break;
+                case 5:
+                    sair();
+                    break;
+                default:
+                    System.out.println("Opção inválida!");
+                    break;
+            }
+        } while (opcao != 5);
+    }
+
+    private void incluirProduto() {
+        System.out.println("\nDigite o código:");
+        String codigo = scanner.nextLine();
+
+        System.out.println("Digite o nome:");
+        String descricao = scanner.nextLine();
+
+        System.out.println("Digite o preço de compra:");
+        Long preco = scanner.nextLong();
+        scanner.nextLine();
+
+        ProdutoModel novoProduto = new ProdutoModel(codigo, descricao, preco);
+
+        System.out.println("\nConfirme os dados:");
+        System.out.println("Código: " + novoProduto.getCodigo());
+        System.out.println("Nome: " + novoProduto.getNome());
+        System.out.println("Preço de compra: " + novoProduto.getPreco());
+
+        System.out.println("Deseja salvar? (S/N)");
+        String confirmacao = scanner.nextLine().toUpperCase();
+
+        if (confirmacao.equals("S")) {
+            this.adicionarProduto(novoProduto);
+            System.out.println("Produto adicionado com sucesso!");
+        } else {
+            System.out.println("Operação cancelada.");
+        }
+    }
+
+    private void editarProduto() {
+        System.out.println("\nLista de produtos:");
+        List<ProdutoModel> produtos = this.buscarTodosProdutos();
+        for (ProdutoModel produto : produtos) {
+            System.out.println(produto.getCodigo() + " - " + produto.getNome());
+        }
+
+        System.out.println("\nDigite o código do produto que deseja editar:");
+        String codigo = scanner.nextLine();
+
+        ProdutoModel produto = this.buscarProdutoPorCodigo(codigo);
+
+        if (produto != null) {
+            System.out.println("Produto encontrado:");
+            System.out.println("Nome: " + produto.getNome());
+            System.out.println("Novo nome:");
+            String novoNome = scanner.nextLine();
+
+            System.out.println("Preço de compra: " + produto.getPreco());
+            System.out.println("Novo preço de compra:");
+            Long novoPreco = scanner.nextLong();
+            scanner.nextLine();
+
+            produto.setNome(novoNome);
+            produto.setPreco(novoPreco);
+            this.editarProduto(produto);
+            System.out.println("Produto editado com sucesso!");
+        } else {
+            System.out.println("Produto não encontrado!");
+        }
+    }
+
+    private void listarProdutos() {
+        List<ProdutoModel> produtos = this.buscarTodosProdutos();
+        System.out.println("\nLista de produtos:");
+        for (ProdutoModel produto : produtos) {
+            System.out.println(produto.getCodigo() + " - " + produto.getNome() + " - Preço: " + produto.getPreco());
+        }
+    }
+
+    private void excluirProduto() {
+        System.out.println("\nLista de produtos:");
+        List<ProdutoModel> produtos = this.buscarTodosProdutos();
+        for (ProdutoModel produto : produtos) {
+            System.out.println(produto.getCodigo() + " - " + produto.getNome());
+        }
+
+        System.out.println("\nDigite o código do produto que deseja excluir:");
+        String codigo = scanner.nextLine();
+
+        ProdutoModel produto = this.buscarProdutoPorCodigo(codigo);
+
+        if (produto != null) {
+            this.excluirProduto(codigo);
+            System.out.println("Produto excluído com sucesso!");
+        } else {
+            System.out.println("Produto não encontrado!");
+        }
+    }
+
+    private void sair() {
+//        this.neo4jConnection.close();
+        Main.exibirMenuPrincipal();
+    }
+
+//    public void adicionarProduto(ProdutoModel produto) {
+//        try (Session session = neo4jConnection.getSession()) {
+//            Result result = session.run("CREATE (p:Produto {codigo: $codigo, nome: $nome, preco: $preco})",
+//                    parameters("codigo", produto.getCodigo(), "nome", produto.getNome(), "preco", produto.getPreco()));
+//            System.out.println(result.consume().counters().nodesCreated());
+//        }
+//    }
+    
+    public void adicionarProduto(ProdutoModel produto) {
+        try (Session session = neo4jConnection.getSession()) {
+            Result result = session.run("CREATE (p:Produto {codigo: $codigo, nome: $nome, preco: $preco}) "
+                            + "WITH p "
+                            + "CREATE (e:Estoque {codigo_produto: $codigo, quantidade: 0, preco_compra: $preco, preco_venda: 0}) "
+                            + "CREATE (p)-[:POSSUI]->(e) "
+                            + "RETURN p",
+                    parameters("codigo", produto.getCodigo(), "nome", produto.getNome(), "preco", produto.getPreco()));
+            System.out.println(result.consume().counters().nodesCreated());
+        }
+    }
+
+
+    public void editarProduto(ProdutoModel produto) {
+        try (Session session = neo4jConnection.getSession()) {
+            session.run("MATCH (p:Produto {codigo: $codigo}) SET p.nome = $nome, p.preco = $preco",
+                    parameters("codigo", produto.getCodigo(), "nome", produto.getNome(), "preco", produto.getPreco()));
+            System.out.println("Produto atualizado com sucesso!");
+        }
+    }
+
+    public void excluirProduto(String codigo) {
+        try (Session session = neo4jConnection.getSession()) {
+            Result result = session.run("MATCH (p:Produto {codigo: $codigo}) DETACH DELETE p",
+                    parameters("codigo", codigo));
+            System.out.println(result.consume().counters().nodesDeleted());
+        }
+    }
+
+    public List<ProdutoModel> buscarTodosProdutos() {
+        try (Session session = neo4jConnection.getSession()) {
+            Result result = session.run("MATCH (p:Produto) RETURN p.codigo, p.nome, p.preco");
+            return result.stream().map(record ->
+                    new ProdutoModel(record.get(0).asString(), record.get(1).asString(), record.get(2).asLong()))
+                    .collect(Collectors.toList());
+        }
+    }
+
+    public ProdutoModel buscarProdutoPorCodigo(String codigo) {
+        try (Session session = neo4jConnection.getSession()) {
+            Result result = session.run("MATCH (p:Produto {codigo: $codigo}) RETURN p.nome, p.preco",
+                    parameters("codigo", codigo));
+
+            if (result.hasNext()) {
+                Record record = result.next();
+                String nome = record.get("p.nome").asString();
+                Long preco = record.get("p.preco").asLong();
+                return new ProdutoModel(codigo, nome, preco);
+            }
+        }
+        return null;
+    }
+}
