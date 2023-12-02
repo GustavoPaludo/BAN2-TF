@@ -71,28 +71,30 @@ public class Relatorio {
     public void relatorioCompra() {
         try (Session session = neo4jConnection.getSession()) {
             Result result = session.run("MATCH (c:Compra)-[contem:Contem]->(p:Produto) "
-                    + "RETURN c.dataCompra AS Data, p.nome AS Produto, p.preco AS Preco, contem.quantidade AS Quantidade");
+                    + "RETURN ID(c) AS CompraID, c.dataCompra AS Data, p.nome AS Produto, p.precocompra AS PrecoCompra, contem.quantidade AS Quantidade");
 
             System.out.println("Relatório de Compras:");
             double totalCompras = 0.0;
             List<String[]> linhas = new ArrayList<>();
-            linhas.add(new String[]{"Data", "Produto", "Preço", "Quantidade", "Total do Produto"});
+            linhas.add(new String[]{"ID", "Data", "Produto", "Preço Compra", "Quantidade", "Total do Produto"});
 
             while (result.hasNext()) {
                 Record record = result.next();
+                long compraID = record.get("CompraID").asLong();
                 LocalDate data = LocalDate.parse(record.get("Data").asString());
                 String produto = record.get("Produto").asString();
-                double preco = record.get("Preco").asDouble();
+                double precocompra = record.get("PrecoCompra").asDouble();
                 int quantidade = record.get("Quantidade").asInt();
-                double totalProduto = preco * quantidade;
+                double totalProduto = precocompra * quantidade;
                 totalCompras += totalProduto;
 
-                System.out.println("Data: " + data + " - Produto: " + produto + " - Preço: " + preco +
+                System.out.println("ID: " + compraID + " - Data: " + data + " - Produto: " + produto + " - Preço de Compra: " + precocompra +
                         " - Quantidade: " + quantidade + " - Total do Produto: " + totalProduto);
 
-                linhas.add(new String[]{data.toString(), produto, String.valueOf(preco), String.valueOf(quantidade), String.valueOf(totalProduto)});
+                linhas.add(new String[]{String.valueOf(compraID), data.toString(), produto, String.valueOf(precocompra), String.valueOf(quantidade), String.valueOf(totalProduto)});
             }
             System.out.println("Total de todas as compras: " + totalCompras);
+
             LocalDateTime agora = LocalDateTime.now();
             DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd_HH-mm-ss");
             String dataFormatada = agora.format(formatter);
@@ -108,29 +110,29 @@ public class Relatorio {
     public void relatorioVendas() {
         try (Session session = neo4jConnection.getSession()) {
             Result result = session.run("MATCH (v:Venda)-[contem:Contem]->(p:Produto) "
-                    + "RETURN v.dataVenda AS Data, p.nome AS Produto, p.preco AS Preco, contem.quantidade AS Quantidade");
+                    + "RETURN ID(v) AS VendaID, v.dataVenda AS Data, p.nome AS Produto, p.precovenda AS PrecoVenda, contem.quantidade AS Quantidade");
 
             System.out.println("Relatório de Vendas:");
             double totalVendas = 0.0;
             List<String[]> linhas = new ArrayList<>();
-            linhas.add(new String[]{"Data", "Produto", "Preço", "Quantidade", "Total do Produto"});
+            linhas.add(new String[]{"ID", "Data", "Produto", "Preco Venda", "Quantidade", "Total do Produto"});
 
             while (result.hasNext()) {
                 Record record = result.next();
+                long vendaID = record.get("VendaID").asLong();
                 LocalDate data = LocalDate.parse(record.get("Data").asString());
                 String produto = record.get("Produto").asString();
-                double preco = record.get("Preco").asDouble();
+                double precovenda = record.get("PrecoVenda").asDouble();
                 int quantidade = record.get("Quantidade").asInt();
-                double totalProduto = preco * quantidade;
+                double totalProduto = precovenda * quantidade;
                 totalVendas += totalProduto;
 
-                System.out.println("Data: " + data + " - Produto: " + produto + " - Preço: " + preco +
+                System.out.println("ID: " + vendaID + " - Data: " + data + " - Produto: " + produto + " - Preço de Venda: " + precovenda +
                         " - Quantidade: " + quantidade + " - Total do Produto: " + totalProduto);
 
-                linhas.add(new String[]{data.toString(), produto, String.valueOf(preco), String.valueOf(quantidade), String.valueOf(totalProduto)});
+                linhas.add(new String[]{String.valueOf(vendaID), data.toString(), produto, String.valueOf(precovenda), String.valueOf(quantidade), String.valueOf(totalProduto)});
             }
             System.out.println("Total de todas as vendas: " + totalVendas);
-
             LocalDateTime agora = LocalDateTime.now();
             DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd_HH-mm-ss");
             String dataFormatada = agora.format(formatter);
@@ -145,46 +147,48 @@ public class Relatorio {
 
     public void relatorioMovimentacoes() {
         try (Session session = neo4jConnection.getSession()) {
-            Result resultCompra = session.run("MATCH (mov:Compra)-[contem:Contem]->(p:Produto) "
-                    + "RETURN mov.dataCompra AS Data, p.nome AS Produto, p.preco AS Preco, contem.quantidade AS Quantidade");
+        	Result resultCompra = session.run("MATCH (mov:Compra)-[contem:Contem]->(p:Produto) "
+                    + "RETURN ID(mov) AS MovimentacaoID, mov.dataCompra AS Data, p.nome AS Produto, p.precocompra AS PrecoCompra, contem.quantidade AS Quantidade");
 
             Result resultVenda = session.run("MATCH (mov:Venda)-[contem:Contem]->(p:Produto) "
-                    + "RETURN mov.dataVenda AS Data, p.nome AS Produto, p.preco AS Preco, contem.quantidade AS Quantidade");
+                    + "RETURN ID(mov) AS MovimentacaoID, mov.dataVenda AS Data, p.nome AS Produto, p.precovenda AS PrecoVenda, contem.quantidade AS Quantidade");
 
-            System.out.println("Relatório de Movimentações de Estoque:");
+            System.out.println("Relatorio de Movimentacoes de Estoque:");
             double totalEntrada = 0.0;
             double totalSaida = 0.0;
             List<String[]> linhas = new ArrayList<>();
-            linhas.add(new String[]{"Tipo", "Data", "Produto", "Preço", "Quantidade", "Total do Produto"});
+            linhas.add(new String[]{"ID", "Tipo", "Data", "Produto", "Preco", "Quantidade", "Total do Produto"});
 
             while (resultCompra.hasNext()) {
                 Record record = resultCompra.next();
+                long movimentacaoID = record.get("MovimentacaoID").asLong();
                 LocalDate data = LocalDate.parse(record.get("Data").asString());
                 String produto = record.get("Produto").asString();
-                double preco = record.get("Preco").asDouble();
+                double precocompra = record.get("PrecoCompra").asDouble();
                 int quantidade = record.get("Quantidade").asInt();
-                double totalProduto = preco * quantidade;
+                double totalProduto = precocompra * quantidade;
 
                 totalEntrada += totalProduto;
-                System.out.println("Entrada - Data: " + data + " - Produto: " + produto + " - Preço: " + preco +
+                System.out.println("ID: " + movimentacaoID + " - Entrada - Data: " + data + " - Produto: " + produto + " - Preco de Compra: " + precocompra +
                         " - Quantidade: " + quantidade + " - Total do Produto: " + totalProduto);
 
-                linhas.add(new String[]{"Entrada", data.toString(), produto, String.valueOf(preco), String.valueOf(quantidade), String.valueOf(totalProduto)});
+                linhas.add(new String[]{String.valueOf(movimentacaoID), "Entrada", data.toString(), produto, String.valueOf(precocompra), String.valueOf(quantidade), String.valueOf(totalProduto)});
             }
 
             while (resultVenda.hasNext()) {
                 Record record = resultVenda.next();
+                long movimentacaoID = record.get("MovimentacaoID").asLong();
                 LocalDate data = LocalDate.parse(record.get("Data").asString());
                 String produto = record.get("Produto").asString();
-                double preco = record.get("Preco").asDouble();
+                double precovenda = record.get("PrecoVenda").asDouble();
                 int quantidade = record.get("Quantidade").asInt();
-                double totalProduto = preco * quantidade;
+                double totalProduto = precovenda * quantidade;
 
                 totalSaida += totalProduto;
-                System.out.println("Saída - Data: " + data + " - Produto: " + produto + " - Preço: " + preco +
+                System.out.println("ID: " + movimentacaoID + " - Saida - Data: " + data + " - Produto: " + produto + " - Preco: " + precovenda +
                         " - Quantidade: " + quantidade + " - Total do Produto: " + totalProduto);
 
-                linhas.add(new String[]{"Saída", data.toString(), produto, String.valueOf(preco), String.valueOf(quantidade), String.valueOf(totalProduto)});
+                linhas.add(new String[]{String.valueOf(movimentacaoID), "Saida", data.toString(), produto, String.valueOf(precovenda), String.valueOf(quantidade), String.valueOf(totalProduto)});
             }
 
             System.out.println("Total de Entrada no Estoque: " + totalEntrada);

@@ -4,12 +4,15 @@ public class ProdutoModel {
 
     private String codigo;
     private String nome;
-    private Long preco;
+    private Long precocompra;
+    private Long precovenda;
+    private Integer qtdEstoque;
 
-    public ProdutoModel(String codigo, String nome, Long preco) {
+    public ProdutoModel(String codigo, String nome, Long precocompra, Long precovenda) {
         this.setCodigo(codigo);
         this.nome = nome;
-        this.setPreco(preco);
+        this.setPrecoCompra(precocompra);
+        this.setPrecoVenda(precovenda);
     }
 
     public String getNome() {
@@ -28,16 +31,32 @@ public class ProdutoModel {
 		this.codigo = codigo;
 	}
 
-	public Long getPreco() {
-		return preco;
+	public Long getPrecoCompra() {
+		return precocompra;
 	}
 
-	public void setPreco(Long preco) {
-		this.preco = preco;
+	public void setPrecoCompra(Long precocompra) {
+		this.precocompra = precocompra;
+	}
+
+	public Long getPrecoVenda() {
+		return precovenda;
+	}
+
+	public void setPrecoVenda(Long precovenda) {
+		this.precovenda = precovenda;
 	}
 
 	@Override
 	public String toString() {
-	    return "Código: " + this.getCodigo() + ", Nome: " + this.getNome() + ", Preço: " + this.getPreco();
+	    return "Código: " + this.getCodigo() + ", Nome: " + this.getNome() + ", Preço Compra: " + this.getPrecoCompra() + ", Preço Venda: " + this.getPrecoVenda();
+	}
+
+	public Integer getQtdEstoque() {
+		return qtdEstoque;
+	}
+
+	public void setQtdEstoque(Integer qtdEstoque) {
+		this.qtdEstoque = qtdEstoque;
 	}
 }
